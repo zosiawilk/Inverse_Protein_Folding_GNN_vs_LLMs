@@ -1,0 +1,47 @@
+__pycache__
+/data/af2db
+/data/cath
+/data/ts
+/data/gcndesign_dataset
+/results
+/mmseqs/*fasta
+/mmseqs/*UP*
+/mmseqs/tmp
+/tmp
+.vscode
+.ipynb_checkpoints
+
+# Ignore Datasets
+data/
+data/cath/
+data/cath_3di/
+data/llm_dataset_bpe/
+*.json
+*.jsonl
+*.fasta
+
+# Ignore Training Results & Checkpoints
+results/
+outputs/
+*.pt
+*.bin
+*.safetensors
+
+# Ignore Caches
+huggingface_cache/
+torch_cache/
+__pycache__/
+
+# Ignore Slurm Logs
+logs/
+*.out
+*.err
+*.log
+
+# Keep the scripts folder, but ignore temp files in it
+scripts/__pycache__/
+
+foldseek/
+*.tar.gz
+*.zip
+*.rar
