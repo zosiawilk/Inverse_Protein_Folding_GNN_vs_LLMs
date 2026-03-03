@@ -207,7 +207,7 @@ If you use this work, please cite:
 @misc{wilk2024inversefolding,
   author    = {Zofia Wilk},
   title     = {Assessing the Transferability of Text LLMs for Protein Inverse Folding via Structural Tokenization},
-  year      = {2024},
+  year      = {2026},
   note      = {L65 Mini-Project, University of Cambridge}
 }
 ```
