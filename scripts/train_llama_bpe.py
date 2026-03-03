@@ -175,3 +175,5 @@ def main():
 
     print("Training done.")
 
+if __name__ == '__main__':
+    main()

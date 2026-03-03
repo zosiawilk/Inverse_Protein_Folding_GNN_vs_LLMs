@@ -7,6 +7,10 @@ from peft import LoraConfig, get_peft_model, TaskType, prepare_model_for_kbit_tr
 import os
 
 class ProteinDataset(Dataset):
+    """
+    Custom Dataset for loading protein folding data for LLaMA fine-tuning.
+    Each item consists of an input prompt and a target sequence, tokenized and formatted for causal language modeling.
+    """
     def __init__(self, path, tokenizer, max_length=1024):
         with open(path) as f:
             self.data = json.load(f)
@@ -16,7 +20,7 @@ class ProteinDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx): 
         item = self.data[idx]
         input_text  = item['input'] + '\nSequence:'
         output_text = item['output'].replace('Sequence:', '').strip()
@@ -44,10 +48,10 @@ DATA_DIR = '/home/zww20/rds/hpc-work/GDL/PiFold-main/data/llm_dataset'
 OUT_DIR  = '/home/zww20/rds/hpc-work/GDL/PiFold-main/results/llama_3di'
 MODEL_ID = 'meta-llama/Meta-Llama-3-8B'
 
-# ← KEY SETTINGS FOR SPEED
-NUM_EPOCHS = 3          # Reduced from 10
-DATA_FRACTION = 0.2     # Use 20% of data
-LEARNING_RATE = 5e-5    # Lower and more stable
+
+NUM_EPOCHS = 3          # Reduced from 10 because training was taking too long
+DATA_FRACTION = 0.2     # Use 20% of data for faster training - 3Di is slower due to longer sequences
+LEARNING_RATE = 5e-5    # Lower and more stable 
 BATCH_SIZE = 4
 
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -64,18 +68,22 @@ tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
 tokenizer.pad_token = tokenizer.eos_token
 
 print("\n[2/6] Loading model...")
+# Add quantization config to load the model in 8-bit and further reduce memory usage with 4-bit compute dtype for faster training with LoRA (otherwise it was running out of memory)
 bnb_config = BitsAndBytesConfig(
     load_in_8bit=True,
     bnb_4bit_compute_dtype=torch.float16
 )
-model = AutoModelForCausalLM.from_pretrained(
+# Use quantization and low_cpu_mem_usage to reduce memory usage when loading the model
+model = AutoModelForCausalLM.from_pretrained( 
     MODEL_ID,
     quantization_config=bnb_config,
     device_map='auto',
     low_cpu_mem_usage=True
 )
+# Prepare model for k-bit training (necessary to make the model compatible with LoRA when using quantization)
 model = prepare_model_for_kbit_training(model)
 
+# Configure LoRA for fine-tuning with low-rank adaptation, which significantly reduces the number of trainable parameters and memory usage
 lora_config = LoraConfig(
     task_type=TaskType.CAUSAL_LM,
     r=16,
@@ -90,12 +98,12 @@ print("\n[3/6] Loading datasets...")
 train_dataset = ProteinDataset(f'{DATA_DIR}/train.json', tokenizer)
 valid_dataset = ProteinDataset(f'{DATA_DIR}/valid.json', tokenizer)
 
-# ← Reduce training data for speed
+#Reduce training data for speed
 random.seed(42)
 random.shuffle(train_dataset.data)
 train_dataset.data = train_dataset.data[:int(len(train_dataset.data) * DATA_FRACTION)]
-print(f"✓ Train (reduced): {len(train_dataset)} samples")
-print(f"✓ Valid: {len(valid_dataset)} samples")
+print(f"Train (reduced): {len(train_dataset)} samples")
+print(f"Valid: {len(valid_dataset)} samples")
 
 print("\n[4/6] Creating data loaders...")
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True,  num_workers=0, pin_memory=True)
@@ -139,7 +147,7 @@ for epoch in range(NUM_EPOCHS):
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
-        scheduler.step()  # ← Update LR
+        scheduler.step()  #update learning rate
         train_loss += loss.item()
         
         if i % 100 == 0:
