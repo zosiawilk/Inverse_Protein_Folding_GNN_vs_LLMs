@@ -35,17 +35,32 @@ We fine-tune **LLaMA-3-8B** on the CATH 4.2 benchmark using three tokenization s
 ## Repository Structure
 
 ```
-.
-├── data/                   # Dataset preparation and preprocessing scripts
-├── models/
-│   ├── pifold/             # PiFold GNN (original + raw coords variant)
-│   └── llm/                # LLaMA-3-8B fine-tuning code (3Di, BPE, Cα)
-├── tokenization/
-│   ├── foldseek_3di.py     # Foldseek 3Di token generation
-│   ├── geometric_bpe.py    # BPE over 3Di sequences
-│   └── raw_coords.py       # Raw Cα coordinate serialization
-├── evaluation/             # Sequence recovery metrics and prediction examples
-└── README.md
+PiFold-main/
+├── API/                        # API utilities
+├── assets/                     # Static assets
+├── data/                       # Dataset files
+├── example/                    # Example inputs/outputs
+├── foldseek/                   # Foldseek binary and configs
+├── logs/                       # HPC job logs (training & evaluation runs)
+├── methods/                    # Model architecture definitions
+├── results/                    # Evaluation results and outputs
+├── scripts/
+│   ├── build_bpe_dataset.py    # Generate Geometric BPE tokenized dataset
+│   ├── build_llm_dataset.py    # Build LLM training dataset
+│   ├── download_pdbs.py        # Download PDB files for CATH proteins
+│   ├── prepare_cath_ca_coords.py  # Serialize raw Cα coordinates
+│   ├── train_llama.py          # General LLaMA fine-tuning entry point
+│   ├── train_llama_3di.py      # Fine-tune LLaMA on 3Di tokens
+│   ├── train_llama_bpe.py      # Fine-tune LLaMA on BPE tokens
+│   ├── train_llama_coords.py   # Fine-tune LLaMA on raw Cα coordinates
+│   ├── eval_llama.py           # General LLaMA evaluation
+│   ├── eval_llama_3di.py       # Evaluate 3Di-tokenized model
+│   ├── eval_llama_bpe.py       # Evaluate BPE-tokenized model
+│   ├── eval_llama_coords.py    # Evaluate coordinate-tokenized model
+│   └── view_results.py         # Display and summarise results
+├── utils/                      # Shared utility functions
+├── foldseek-linux-avx2.tar.gz  # Foldseek binary (Linux)
+└── .gitignore
 ```
 
 ---
@@ -119,30 +134,46 @@ pip install -r requirements.txt
 
 ## Running Experiments
 
-### GNN Training
+### Data Preparation
 ```bash
-# PiFold with hand-crafted features
-python models/pifold/train.py --features geometric
+# Download PDB files for CATH proteins
+python scripts/download_pdbs.py
 
-# PiFold with raw coordinates
-python models/pifold/train.py --features raw_coords
+# Prepare raw Cα coordinate sequences
+python scripts/prepare_cath_ca_coords.py
+
+# Build LLM training datasets (3Di tokenization via Foldseek)
+python scripts/build_llm_dataset.py
+
+# Build Geometric BPE dataset
+python scripts/build_bpe_dataset.py
 ```
 
 ### LLM Fine-tuning
 ```bash
-# Fine-tune with 3Di tokens
-python models/llm/finetune.py --tokenization 3di
+# Fine-tune LLaMA-3-8B on Foldseek 3Di tokens
+python scripts/train_llama_3di.py
 
-# Fine-tune with Geometric BPE
-python models/llm/finetune.py --tokenization bpe
+# Fine-tune LLaMA-3-8B on Geometric BPE tokens
+python scripts/train_llama_bpe.py
 
-# Fine-tune with raw Cα coordinates
-python models/llm/finetune.py --tokenization coords --max_length 4096 --quantization 4bit
+# Fine-tune LLaMA-3-8B on raw Cα coordinates (4-bit quantization, longer context)
+python scripts/train_llama_coords.py
 ```
 
 ### Evaluation
 ```bash
-python evaluation/evaluate.py --model [pifold|llama_3di|llama_bpe|llama_coords]
+# Evaluate 3Di-tokenized LLaMA model
+python scripts/eval_llama_3di.py
+
+# Evaluate BPE-tokenized LLaMA model
+python scripts/eval_llama_bpe.py
+
+# Evaluate coordinate-tokenized LLaMA model
+python scripts/eval_llama_coords.py
+
+# View and summarise all results
+python scripts/view_results.py
 ```
 
 ---
